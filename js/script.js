@@ -84,7 +84,7 @@ var popup = new L.Popup();
 // set up a counter so we can assign an ID to each layer
 var count = 0;
 
-// function that sets 
+// on each feature function that loops through the dataset, binds popups, and creates a count
 var acsOnEachFeature = function(feature,layer){ 
     var calc = calculatePercentage(feature);
 
@@ -173,6 +173,79 @@ function createListForClick(dataset) {
         })  
 
 }
+
+
+// lets add data from the API now
+// set a global variable to use in the D3 scale below
+// use jQuery geoJSON to grab data from API
+$.getJSON( "https://data.cityofnewyork.us/resource/erm2-nwe9.json?$$app_token=rQIMJbYqnCnhVM9XNPHE9tj0g&borough=BROOKLYN&complaint_type=Noise&status=Open", function( data ) {
+    var dataset = data;
+    // draw the dataset on the map
+    //plotAPIData(dataset);
+
+});
+
+// create a leaflet layer group to add your API dots to so we can add these to the map
+var apiLayerGroup = L.layerGroup();
+
+// since these data are not geoJson, we have to build our dots from the data by hand
+function plotAPIData(dataset) {
+    // set up D3 ordinal scle for coloring the dots just once
+    var ordinalScale = setUpD3Scale(dataset);
+    console.log(ordinalScale("Noise, Barking Dog (NR5)"));
+
+    // loop through each object in the dataset and create a circle marker for each one using a jQuery for each loop
+    $.each(dataset, function( index, value ) {
+
+        // check to see if lat or lon is undefined or null
+        if ((typeof value.latitude !== "undefined" || typeof value.longitude !== "undefined") || (value.latitude && value.longitude)) {
+            // create a leaflet lat lon object to use in L.circleMarker
+            var latlng = L.latLng(value.latitude, value.longitude);
+     
+            var apiMarker = L.circleMarker(latlng, {
+                stroke: false,
+                fillColor: ordinalScale(value.descriptor),
+                fillOpacity: 1,
+                radius: 5
+            });
+
+            // bind a simple popup so we know what the noise complaint is
+            apiMarker.bindPopup(value.descriptor);
+
+            // add dots to the layer group
+            apiLayerGroup.addLayer(apiMarker);
+
+        }
+
+    });
+
+    apiLayerGroup.addTo(map);
+
+}
+
+function setUpD3Scale(dataset) {
+    //console.log(dataset);
+    // create unique list of descriptors
+    // first we need to create an array of descriptors
+    var descriptors = [];
+
+    // loop through descriptors and add to descriptor array
+    $.each(dataset, function( index, value ) {
+        descriptors.push(value.descriptor);
+    });
+
+    // use underscore to create a unique array
+    var descriptorsUnique = _.uniq(descriptors);
+
+    // create a D3 ordinal scale based on that unique array as a domain
+    var ordinalScale = d3.scale.category20()
+        .domain(descriptorsUnique);
+
+    return ordinalScale;
+
+}
+
+
 
 
 
